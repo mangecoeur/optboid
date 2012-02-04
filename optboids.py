@@ -291,13 +291,12 @@ class FlockSimulation(object):
     def update(self,dt):
         """dt is in seconds"""
         for b in self.swarm.boids:
-            #close_boids = self.swarm.find_near(b.x,b.y,b.influence_range)
-            #b.interact(close_boids)
-            b.interact(self.swarm.boids)
+            close_boids = self.swarm.find_near(b.x,b.y,b.influence_range)
+            b.interact(close_boids)
             b.update(dt) 
             w=self.field_size
             p=self.pad
             b.borders(p,w-p,p,w-p) #keep the boids inside the borders
         
         #rebuild the swarm once we've updated all the positions
-        #self.swarm.rebuild() 
+        self.swarm.rebuild() 
