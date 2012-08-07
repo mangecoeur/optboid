@@ -85,7 +85,7 @@ class World(object):
         for ent in self.ents:
             self.draw_entity(ent)
 
-simulation = optboids.FlockSimulation(100)
+simulation = optboids.FlockSimulation(200)
 world = World(simulation.swarm)
 
 window = pyglet.window.Window(800, 750, vsync=True)    
