@@ -1,9 +1,10 @@
 from __future__ import division
+from __future__ import print_function
 
 from math import atan2, sin, cos, floor, ceil
 import random
 from euclid import Vector2
-
+import numpy as np
 
 """
 Optimization idea
@@ -20,6 +21,9 @@ operations to whole array.
 
 e.g. cohesion sum is simply sum of positions - v. fast  when pos are in 2xN
 array, sum down columns.
+
+Means stronger coupling between boids and swarm - swarm holds list of pos etc
+as well as boid obj.
 
 """
 def limit(vector,lim):
@@ -57,13 +61,32 @@ class BoidSwarm(object):
             for j in range(divs):
                 self.cell_table[(i,j)] = []                
 
-        
+    def add_boids(self,point_list):
+        """
+        add boids at the given locations.
+        Do it this way so that we can maintain numpy arrays
+        of positions, vel, acc, and boid objects
+        """
+        num_boids = len(point_list)
+        self.vels = np.zeros(num_boids,2)
+        self.accels = np.zeros(num_boids,2)
+        self.positions = np.asarray(point_list)
+        for i,p in enumerate(self.positions):
+            v = self.vels[i]
+            a = self.accels[i]
+            self.boids.append( Boid(p,v,a))
+
+        self.rebuild()
+
+    
     def _insert(self, b):
         c = self.find_cell_containing(b.x, b.y)
         c.append(b)
         
     def cell_num(self,x, y):
-        """Forces units into border cells if they hit an edge"""
+        """
+        Find table cell containing position x,y
+        Forces units into border cells if they hit an edge"""
         i = int(floor(x / self.cell_width))
         j = int(floor(y / self.cell_width))
         #deal with boundary conditions
@@ -131,53 +154,47 @@ class Boid(object):
     align_strength *=  max_steering_force
     sep_strength *= max_steering_force
     
-    # Get and set the position as a vector
-    _pos = Vector2(0,0) #init a vector
-    def _get_pos(self):
-        self._pos.x=self.x
-        self._pos.y=self.y
-        return self._pos
-        
-    def _set_pos(self,p):
-        self.x = p.x
-        self.y = p.y
-        
-    position = property(_get_pos,_set_pos)
+    # Get and set x and y
+    def _getx(self): return self.pos[0]
+
     
     # Get and set the speed as a scalar
     def _get_speed(self):
-        return abs(self.velocity)
+        return np.sqrt(self.velocity.dot(self.velocity))
     
     def _set_speed(self,s):
-        if abs(self.velocity) == 0:
-            velocity = Vector2(1,0)
-        
-        self.velocity.normalize()
+        v = np.sqrt(self.velocity.dot(self.velocity))
+        if v == 0:
+            velocity = np.array([1,0])
+        self.velocity /= v
         self.velocity *= s
         
     speed = property(_get_speed,_set_speed)
     
     #get and set the rotation as an angle
     def _get_rotation(self):
-        return atan2(self.velocity.y,self.velocity.x)
+        return atan2(self.velocity[1],self.velocity[0])
     
     def _set_rotation(self,r):
         old_speed = self.speed
         #set the direction as a unit vector
-        velocity.x = cos(r)
-        velocity.y = sin(r)
+        self.velocity[0] = cos(r)
+        self.velocity[1] = sin(r)
 
         self.speed=old_speed 
     
     rotation = property(_get_rotation,_set_rotation)
     
-    def __init__(self,x, y):
+    def __init__(self,pos,v,a, index):
+        self.pos = pos #init pos vector
         """ create a new boid at x,y """
-        self.x = x
-        self.y = y
-        self.acceleration = Vector2(0,0)
-        self.velocity = Vector2(random.uniform(-self.max_speed, self.max_speed),
-                                random.uniform(self.max_speed, self.max_speed))
+        self.x = pos[0]
+        self.y = pos[1]
+        self.acceleration = a
+        self.velocity = v #should point this to numpy array slice
+        self.velocity[0] = random.uniform(-self.max_speed, self.max_speed)
+        self.velocity[1] = random.uniform(-self.max_speed, self.max_speed)
+
     
     def __repr__(self):
         return 'id %d'%self.id
@@ -186,14 +203,17 @@ class Boid(object):
         """
         Assume a square field
         """
+        m = np.identity(2) 
+        # 1 0
+        # 0 1
         if self.x < left:
-            self.velocity += Vector2(1,0) * self.speed / 5
+            self.velocity += m[0,:] * self.speed / 5
         if self.y < top:
-            self.velocity += Vector2(0,1) * self.speed / 5
+            self.velocity +=  m[1,:] * self.speed / 5
         if self.x > right: 
-            self.velocity -=  Vector2(1,0) * self.speed / 5
+            self.velocity -=   m[0,:] * self.speed / 5
         if self.y > bottom: 
-            self.velocity -= Vector2(0,1) * self.speed / 5
+            self.velocity -=  m[1,:] * self.speed / 5
     
     def update(self,t):
         """
@@ -216,18 +236,18 @@ class Boid(object):
         cohesion_force = Vector2(0,0)
         
         count = 0
-
         for other in actors:
             #vector pointing from neighbors to self
+            
             diff = self.position - other.position 
-            d = abs(diff)
+            d = np.sqrt(diff.dot(diff))
 
             #Only perform on "neighbor" actors, i.e. ones closer than arbitrary
             #dist or if the distance is not 0 (you are yourself)
             if d > 0 and d < self.influence_range:
                 count = count+1
                 
-                diff.normalize()
+                diff /= d
                 if d < self.minsep:
                     diff *= self.max_steering_force
                 else:
@@ -259,7 +279,7 @@ class Boid(object):
 
             #smooth the acceleration var
             self.acceleration = 0.2*self.acceleration + sum
-     
+    
     def steer(self, desired, slowdown=False):
         """
         A helper method that calculates a steering vector towards a target
