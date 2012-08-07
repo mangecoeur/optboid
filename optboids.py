@@ -4,6 +4,24 @@ from math import atan2, sin, cos, floor, ceil
 import random
 from euclid import Vector2
 
+
+"""
+Optimization idea
+Most of time is spent in interact operation
+grid structure is pretty efficient, doesn't take much time now.
+Want to use numpy to boost perf because quite a lot of time is spent
+doing vector operations with the eucild module
+Can do several things.
+make vectors numpy vectors, use numpy funcs to add, multiply etc
+
+could store pos, vel, acc of boids in their own numpy array- an array of vectors.
+use "find near" to return a view of this array (arr[[...inds...]]) and apply 
+operations to whole array. 
+
+e.g. cohesion sum is simply sum of positions - v. fast  when pos are in 2xN
+array, sum down columns.
+
+"""
 def limit(vector,lim):
     """
     limit a vector to a given magnitude
@@ -39,9 +57,6 @@ class BoidSwarm(object):
             for j in range(divs):
                 self.cell_table[(i,j)] = []                
 
-    def add_boid(self,b):
-        self.boids.append(b)
-        self._insert(b)
         
     def _insert(self, b):
         c = self.find_cell_containing(b.x, b.y)
@@ -117,8 +132,11 @@ class Boid(object):
     sep_strength *= max_steering_force
     
     # Get and set the position as a vector
+    _pos = Vector2(0,0) #init a vector
     def _get_pos(self):
-        return Vector2(self.x,self.y)
+        self._pos.x=self.x
+        self._pos.y=self.y
+        return self._pos
         
     def _set_pos(self,p):
         self.x = p.x
@@ -284,8 +302,8 @@ class FlockSimulation(object):
         for i in range(starting_units):
             b = Boid(random.uniform(100, 600), 
                      random.uniform(100, 600))
-            self.swarm.add_boid(b)
-        
+            self.swarm.boids.append(b)
+        self.swarm.rebuild()
         self._cumltime = 0 #calculation var
         
     def update(self,dt):
