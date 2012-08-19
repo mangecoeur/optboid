@@ -40,17 +40,19 @@ class World(object):
     verts = [0.5, 0.0,-0.5, -0.2,-0.5, 0.2]
     vertsGl = (GLfloat * len(verts))(*verts)
     
-    def __init__(self, swarm):
+    def __init__(self, swarm, offx, offy):
         self.swarm = swarm
         self.ents = swarm.boids #this will point to a list of boids
         self.ent_size=15.0
         self.fps = clock.ClockDisplay()
+        self.o_x = offx
+        self.o_y = offy
 
-    def draw_entity(self,ent):
+    def draw_entity(self,e):
         """ Draws a boid """
         glLoadIdentity()
-        glTranslatef(ent.x, ent.y, 0.0)
-        glRotatef(ent.rotation*180/pi, 0, 0, 1)
+        glTranslatef(e.position.x+self.o_x, e.position.y+self.o_y, 0.0)
+        glRotatef(e.rotation*180/pi, 0, 0, 1)
         glScalef(self.ent_size, self.ent_size, 1.0)
         glColor4f(0,0,0,0)
         glEnableClientState(GL_VERTEX_ARRAY)
@@ -85,8 +87,8 @@ class World(object):
         for ent in self.ents:
             self.draw_entity(ent)
 
-simulation = optboids.FlockSimulation(200)
-world = World(simulation.swarm)
+simulation = optboids.FlockSimulation(200,600)
+world = World(simulation.swarm,50,50)
 
 window = pyglet.window.Window(800, 750, vsync=True)    
 

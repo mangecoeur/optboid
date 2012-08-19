@@ -225,6 +225,10 @@ class Vector2(object):
 
     magnitude = __abs__
 
+    def clear(self):
+        self.x = 0
+        self.y = 0
+
     def magnitude_squared(self):
         return self.x ** 2 + \
                self.y ** 2
