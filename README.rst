@@ -1,7 +1,7 @@
 Optimized Boids (2D)
 ====================
 
-run with python engine.py
+run with python optboid.py
 
 An optimized version of  C. Reynolds flocking simulation which uses "boids"
 with simple rules to reproduce the behaviour of flocking creatures.

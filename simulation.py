@@ -2,6 +2,7 @@ from __future__ import division
 
 from math import atan2, sin, cos, floor, ceil
 import random
+import collections
 from euclid import Vector2
 
 def limit(vector,lim):
@@ -37,7 +38,8 @@ class BoidSwarm(object):
         self.num_cells = divs*divs
         for i in range(divs):
             for j in range(divs):
-                self.cell_table[(i,j)] = []                
+                #use deque for fast appends of several deque
+                self.cell_table[(i,j)] = collections.deque()           
 
         
     def cell_num(self,x, y):
@@ -70,23 +72,22 @@ class BoidSwarm(object):
     def find_neighbour_cells(self, x, y):
         return self.cell_table[self.cell_num(x,y)]
         
-    def find_extended(self, x, y,  d):
+    def find_extended(self, x, y, d):
         """
-        use to find set of cells surrounding the cell containing position
-        x,y
+        use to find set of cells surrounding the cell containing position x,y
         """
         I,J = self.cell_num(x,y)
         d=int(d)
-        group = []
+        group = collections.deque()
         for i in range(I-d,I+d):
             for j in range(J-d,J+d):
                 if (i,j) in self.cell_table:
-                    group += self.cell_table[(i,j)] #list concat
+                    group.extend( self.cell_table[(i,j)] ) #merge deque
         return group
 
     def rebuild(self): 
         for cell in self.cell_table.values():
-            cell[:] = []
+            cell.clear()
         for b in self.boids:
             c = self.find_cell_containing(b.position.x, b.position.y)
             c.append(b)
@@ -160,12 +161,15 @@ class Boid(object):
             self.velocity -=  Vector2(1,0) * self.speed / 5
         if self.position.y > bottom: 
             self.velocity -= Vector2(0,1) * self.speed / 5
-            """
-        if right < self.position.x or self.position.x < left:
-            self.velocity.x = -self.velocity.x
-        if bottom < self.position.y or self.position.y < top:
-            self.velocity.y = -self.velocity.y
-       
+        """
+        if (self.position.x < left and self.velocity.x < 0) or \
+           (self.position.x > right and self.velocity.x > 0):
+            self.velocity.x = - self.velocity.x
+            
+        elif (self.position.y < top and self.velocity.y < 0) or \
+             (self.position.y > bottom and self.velocity.y > 0):
+            self.velocity.y = - self.velocity.y
+
     
     def update(self,t):
         """

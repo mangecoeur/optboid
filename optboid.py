@@ -21,7 +21,7 @@
 
 """
 A simple pyglet engine to do some 2D rendering.
-Used to display ebtutues at given positions
+Used to display boids at given positions
 """
 from __future__ import division
 
@@ -29,7 +29,7 @@ from pyglet import *
 from pyglet.gl import *
 from math import *
 import random
-import optboids
+import simulation
 
 
 class World(object):
@@ -87,8 +87,8 @@ class World(object):
         for ent in self.ents:
             self.draw_entity(ent)
 
-simulation = optboids.FlockSimulation(200,600)
-world = World(simulation.swarm,50,50)
+sim = simulation.FlockSimulation(200,600)
+world = World(sim.swarm,50,50)
 
 window = pyglet.window.Window(800, 750, vsync=True)    
 
@@ -98,7 +98,7 @@ def on_draw():
     world.draw()
 
 def update(dt):
-    simulation.update(dt)
+    sim.update(dt)
 
 def idle(dt):
     pass        
