@@ -87,7 +87,7 @@ class World(object):
         for ent in self.ents:
             self.draw_entity(ent)
 
-sim = simulation.FlockSimulation(200,600)
+sim = simulation.FlockSimulation(200,700)
 world = World(sim.swarm,50,50)
 
 window = pyglet.window.Window(800, 750, vsync=True)    

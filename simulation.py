@@ -96,20 +96,18 @@ class Boid(object):
     """
     Boids class
     """
-    influence_range = 40
+    influence_range = 90
     minsep = 25.0
-    damp = 90.0    
     max_force = 20.0
-    max_speed = 50.0
-    max_steering_force = 20.0
+    max_speed = 80.0
     drag = 0.9
     cohesion_strength = 1.0 
     align_strength = 1.0
-    sep_strength = 1.0
+    sep_strength = 1.5
     
-    cohesion_strength *=  max_steering_force
-    align_strength *=  max_steering_force
-    sep_strength *= max_steering_force
+    #cohesion_strength *=  max_force
+    #align_strength *=  max_force
+    #sep_strength *= max_force
     
     # Get and set the speed as a scalar
     def _get_speed(self):
@@ -143,7 +141,7 @@ class Boid(object):
         self.position = Vector2(x,y,)
         self.acceleration = Vector2(0,0)
         self.velocity = Vector2(random.uniform(-self.max_speed, self.max_speed),
-                                random.uniform(self.max_speed, self.max_speed))
+                                random.uniform(-self.max_speed, self.max_speed))
     
     def __repr__(self):
         return 'id %d'%self.id
@@ -151,37 +149,34 @@ class Boid(object):
     def borders(self, top, bottom, left, right):
         """
         Assume a square field
-        """
+        if (self.position.x < left and self.velocity.x < 0):
+            self.velocity.x = self.max_speed
+        if (self.position.x > right and self.velocity.x > 0):
+            self.velocity.x = - self.max_speed
+        if (self.position.y < top and self.velocity.y < 0):
+            self.velocity.y = self.max_speed
+        if (self.position.y > bottom and self.velocity.y > 0):
+            self.velocity.y = - self.max_speed
         """
         if self.position.x < left:
-            self.velocity += Vector2(1,0) * self.speed / 5
+            self.position.x = right
+        if self.position.x > right :
+            self.position.x = left
         if self.position.y < top:
-            self.velocity += Vector2(0,1) * self.speed / 5
-        if self.position.x > right: 
-            self.velocity -=  Vector2(1,0) * self.speed / 5
-        if self.position.y > bottom: 
-            self.velocity -= Vector2(0,1) * self.speed / 5
-        """
-        if (self.position.x < left and self.velocity.x < 0) or \
-           (self.position.x > right and self.velocity.x > 0):
-            self.velocity.x = - self.velocity.x
-            
-        elif (self.position.y < top and self.velocity.y < 0) or \
-             (self.position.y > bottom and self.velocity.y > 0):
-            self.velocity.y = - self.velocity.y
+            self.position.y = bottom
+        if self.position.y > bottom:
+            self.position.y = top
 
     
     def update(self,t):
         """
         Method to update position by computing displacement from velocity and acceleration
         """
-        self.velocity += self.acceleration * t *self.drag
-        if self.speed > self.max_speed:
-            self.velocity *= 0.9
-       
+        self.velocity += self.acceleration * t
         limit(self.velocity,self.max_speed)
         self.position += self.velocity * t
 
+    #Calculation variables for interact method - init once instead of on each call
     _sep_f = Vector2(0,0)
     _align_f =  Vector2(0,0)
     _cohes_sum =  Vector2(0,0)
@@ -189,7 +184,10 @@ class Boid(object):
     def interact(self, actors):
         """
         Unit-unit interaction method, combining a separation force, and velocity
-        alignment force, and a cohesion force
+        alignment force, and a cohesion force.
+        
+        Many examples separate these into different functions for clarity
+        but combining them means we need fewer loops over the neibor list
         """
 
         self._sep_f.clear()
@@ -205,41 +203,48 @@ class Boid(object):
 
             #Only perform on "neighbor" actors, i.e. ones closer than arbitrary
             #dist or if the distance is not 0 (you are yourself)
-            if 0< d < self.influence_range:
+            if 0 < d < self.influence_range:
                 count += 1
                 
                 diff.normalize()
                 if d < self.minsep:
-                    diff *= self.max_steering_force
-                else:
+#                    diff *= self.max_force
+#                else:
                     diff /= d # Weight by distance
-
-                self._cohes_sum += other.position # Add position
-
                 self._sep_f += diff
-
+                
+                self._cohes_sum += other.position # Add position
+                
                 #Align - add the velocity of the neighbouring actors, then average
                 self._align_f  += other.velocity
 
         if count > 0:
             #calc the average of the separation vector
-            self._sep_f /=count
-            self._sep_f *= self.sep_strength
+            #self._sep_f /=count don't div by count if normalizing anyway!
+            self._sep_f.normalize()
+            self._sep_f *= self.max_speed
+            self._sep_f -= self.velocity
+            limit(self._sep_f, self.max_force)
             
             #calc the average direction (normed avg velocity)
-            self._align_f /=count
-            self._align_f *= self.align_strength
+            #self._align_f /= count
+            self._align_f.normalize()
+            self._align_f *= self.max_speed
+            self._align_f -= self.velocity
+            limit(self._align_f, self.max_force)
             
             #calc the average position and calc steering vector towards it
             self._cohes_sum /= count
             cohesion_f = self.steer(self._cohes_sum,True)
+           
+            self._sep_f *= self.sep_strength
+            self._align_f *= self.align_strength
             cohesion_f *= self.cohesion_strength
-
+            
             #finally add the velocities
             sum = self._sep_f + cohesion_f + self._align_f 
 
-            #smooth the acceleration var
-            self.acceleration = 0.2*self.acceleration + sum
+            self.acceleration = sum
      
     def steer(self, desired, slowdown=False):
         """
@@ -251,19 +256,16 @@ class Boid(object):
         #If the distance is greater than 0, calc steering (otherwise return zero vector)
         if d > 0:
             desired.normalize()
-            if slowdown and (d < 30.0):
-                desired *= self.max_steering_force*d/self.damp
+            if slowdown and (d < self.minsep):
+                desired *= self.max_speed*d/ self.minsep
             else:
-                desired *= self.max_steering_force
+                desired *= self.max_speed
                 
             steer = desired - self.velocity
+            limit(steer, self.max_force)
         else:
             steer = Vector2(0,0)
         return steer
-
-    def seek(self, target, m=1):
-        self.acceleration += self.steer(target,False)
-        self.acceleration = self.acceleration * m
     
  
 class FlockSimulation(object):
@@ -276,13 +278,13 @@ class FlockSimulation(object):
     def __init__(self,starting_units = 100, field_size = 800):
         """
         """
-        self.swarm = BoidSwarm(field_size+2*40,Boid.influence_range+5)
+        self.swarm = BoidSwarm(field_size+2*40,Boid.influence_range+5) #/2
         self.field_size = field_size
-        self.pad = self.swarm.cell_width #use to keep boids inside the play field
+        self.pad = 40 #use to keep boids inside the play field
         
         for i in range(starting_units):
-            b = Boid(random.uniform(100, 600), 
-                     random.uniform(100, 600))
+            b = Boid(random.uniform(100, 200), 
+                     random.uniform(100, 200))
             self.swarm.boids.append(b)
         self.swarm.rebuild()
         self._cumltime = 0 #calculation var
