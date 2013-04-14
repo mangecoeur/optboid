@@ -37,28 +37,28 @@ class World(object):
     world class with draw functions for entities
     """
     #create verticies in opengl for more efficient drawing
-    verts = [0.5, 0.0,-0.5, -0.2,-0.5, 0.2]
+    verts = [0.5, 0.0, -0.5, -0.2, -0.5, 0.2]
     vertsGl = (GLfloat * len(verts))(*verts)
-    
+
     def __init__(self, swarm, offx, offy):
         self.swarm = swarm
-        self.ents = swarm.boids #this will point to a list of boids
-        self.ent_size=15.0
+        self.ents = swarm.boids  # this will point to a list of boids
+        self.ent_size = 15.0
         self.fps = clock.ClockDisplay()
         self.o_x = offx
         self.o_y = offy
 
-    def draw_entity(self,e):
+    def draw_entity(self, e):
         """ Draws a boid """
         glLoadIdentity()
         glTranslatef(e.position.x+self.o_x, e.position.y+self.o_y, 0.0)
         glRotatef(e.rotation*180/pi, 0, 0, 1)
         glScalef(self.ent_size, self.ent_size, 1.0)
-        glColor4f(0,0,0,0)
+        glColor4f(0, 0, 0, 0)
         glEnableClientState(GL_VERTEX_ARRAY)
         glVertexPointer(2, GL_FLOAT, 0, self.vertsGl)
         glDrawArrays(GL_TRIANGLES, 0, len(self.vertsGl) // 2)
-        
+
     def draw_grid(self):
         cw=self.swarm.cell_width
         w=cw*self.swarm.divisions
@@ -87,24 +87,28 @@ class World(object):
         for ent in self.ents:
             self.draw_entity(ent)
 
-sim = simulation.FlockSimulation(200,700)
-world = World(sim.swarm,50,50)
+sim = simulation.FlockSimulation(150, 750)
+world = World(sim.swarm, -25, -25)
 
-window = pyglet.window.Window(800, 750, vsync=True)    
+window = pyglet.window.Window(700, 700, vsync=True)
+
 
 @window.event
 def on_draw():
     window.clear()
     world.draw()
 
+
 def update(dt):
     sim.update(dt)
 
-def idle(dt):
-    pass        
 
-clock.schedule(update)  
+def idle(dt):
+    pass
+
+
+clock.schedule(update)
 clock.schedule(idle)
 
-if __name__=='__main__':
-    pyglet.app.run()  
+if __name__ == '__main__':
+    pyglet.app.run()
