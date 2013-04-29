@@ -1,7 +1,15 @@
 Optimized Boids (2D)
 ====================
 
-run with python optboid.py
+There are two GUIs for the simulation. 
+One based on PyGlet which must first be installed. Run this with
+
+python glboid.py
+
+The second is a curses (terminal) interface. Run with
+
+python curseboid.py
+
 
 An optimized version of  C. Reynolds flocking simulation which uses "boids"
 with simple rules to reproduce the behaviour of flocking creatures.
